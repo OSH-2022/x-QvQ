@@ -1,5 +1,5 @@
 # x-QvQ
-osh-2022 project,improved redleaf running on raspberry pi
+osh-2022 project,improved redleaf running on non-x86 architectures
 ### 小组成员
 - [楚颖 PB20111610](https://github.com/PB20111610)
 - [耿双越 PB20111639](https://github.com/Annie-Geng)
