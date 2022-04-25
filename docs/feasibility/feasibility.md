@@ -453,7 +453,7 @@ rCore 指导书 rCore Tutorial 虽然是针对 RISC-V 撰写，但同样有很�
 rCore 采用非递归线段树来维护物理页帧，节点上的值表示这个节点对应的区间内是否还有空闲物理页。
 
 ###### rCore 的地址空间映射
-![](.\img\01-rcore.png)
+![](./img/01-rcore.png)
 
 ###### 切换到虚拟地址空间
 1. 分配页表所在内存空间并初始化页表。
@@ -479,7 +479,7 @@ pub fn access_pa_via_va(pa: usize) -> usize {
 ###### MemorySet
 
 通过更高一层的抽象屏蔽了底层具体映射方法的实现，同时为线程的内存段式管理提供更易用的接口
-![](.\img\02-rcore.png)
+![](./img/02-rcore.png)
 
 #### 进程管理
 
@@ -528,7 +528,7 @@ pub fn sys_exec(path: &str) -> isize;
 
 以下是经典的树莓派启动流程，使用官方提供的固件进行引导，内核被 GPU 加载到内存，直到内核被加载完成 CPU 才从内核入口点开始执行.
 
-![](.\img\03-raspi.png)
+![](./img/03-raspi.png)
 
 ##### 使用其他固件
 
@@ -543,7 +543,7 @@ pub fn sys_exec(path: &str) -> isize;
 
 由于没有虚拟化和安全相关目标，本项目的实现中只会使用到 EL0，EL1 两个特权等级
 
-![](.\img\04-el.png)
+![](./img/04-el.png)
 
 ## 技术路线
 
@@ -559,10 +559,17 @@ pub fn sys_exec(path: &str) -> isize;
 ## 参考资料
 
 [1] https://github.com/OSH-2021/x-DisGraFS/blob/main/docs/feasibility.md
+
 [2] https://github.com/OSH-2019/x-rust-freertos/blob/master/docs/feasibility.md
+
 [3] https://os.phil-opp.com/freestanding-rust-binary/
+
 [4] https://www.bookstack.cn/read/rCore_tutorial_doc
+
 [5] https://github.com/rcore-os/rCore
+
 [6] https://www.usenix.org/system/files/osdi20-narayanan_vikram.pdf
+
 [7] https://sel4.systems/About/seL4-whitepaper.pdf
+
 [8] https://github.com/wenyuzhao/Sophon
