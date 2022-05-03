@@ -12,7 +12,7 @@ _start:
     bne	parking_loop
 
     adr x0, __boot_stack_end
-	mov	sp, x0
+    mov	sp, x0
     b _start_rust
 
 parking_loop:
