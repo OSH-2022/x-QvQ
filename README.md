@@ -14,7 +14,7 @@ A simple kernel for raspberry pi 3b+ written in Rust,  with the purpose of explo
 
 ## TODO
 
-- [ ] Skeleton of project
+- [x] Skeleton of project
 
 ### Kernel
 

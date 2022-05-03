@@ -1,0 +1,7 @@
+[unstable]
+unstable-options = true
+
+[build]
+out-dir = "target/out"
+target-dir = "target"
+target = "aarch64-unknown-none"
