@@ -6,19 +6,19 @@ KERNEL_ELF := $(RUST_OUT_DIR)/kernel
 KERNEL_BIN := $(RUST_OUT_DIR)/kernel.bin
 
 OBJCOPY := rust-objcopy -O binary
-QEMU := qemu-system-aarch64 -machine raspi3b -nographic
+QEMU := qemu-system-aarch64 -machine raspi3b -nographic -serial null -serial mon:stdio
 
 .PHONY: clear qemu kernel all
 
 all: qemu
 
-clear:
+clean:
 	rm -r target
 
 qemu: $(KERNEL_BIN)
 	$(QEMU) -kernel $(KERNEL_BIN)
 
-kernel: $(KERNEL)
+kernel: $(KERNEL_ELF)
 
 $(KERNEL_BIN): $(KERNEL_ELF)
 	$(OBJCOPY) $(KERNEL_ELF) $(KERNEL_BIN)

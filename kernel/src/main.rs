@@ -1,20 +1,15 @@
 #![no_std]
 #![no_main]
-#![feature(lang_items)]
+#![feature(panic_info_message)]
 
 mod arch;
-
-use core::panic::PanicInfo;
+mod bsp;
+mod panic;
+mod print;
 
 #[no_mangle]
 fn _start_rust() {
+    bsp::driver_init();
+    print!("== Kernel Init ==\n").unwrap();
     loop {}
 }
-
-#[panic_handler]
-fn panic(_info: &PanicInfo<'_>) -> ! {
-    loop {}
-}
-
-#[lang = "eh_personality"]
-fn eh_personality() {}
