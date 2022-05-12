@@ -12,4 +12,5 @@ bench = false
 
 [dependencies]
 tock-registers = "0.7"
+cortex-a = "7.0"
 spin = "0.9"
