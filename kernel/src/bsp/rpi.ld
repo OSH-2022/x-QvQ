@@ -1,22 +1,23 @@
 ENTRY(_start)
 
-__rpi_phys_dram_start_addr = 0;
+PAGE_SIZE = 4K;
 
-__rpi_phys_binary_load_addr = 0x80000;
+__boot_start_paddr = 0x80000;
+__kernel_start_vaddr = 0xff00000000000000;
 
 SECTIONS {
-    . = __rpi_phys_dram_start_addr;
-
-    .boot_stack (NOLOAD) : {
-        . += __rpi_phys_binary_load_addr;
+    . = __boot_start_paddr;
+    .text.boot : AT(__boot_start_paddr) {
+        *(.text.boot)
     }
-    
-    __boot_stack_end = .;
-    
-    __kernel_start = .;
 
-    .text : {
-        *(.text._start)
+    __kernel_start_paddr = ALIGN(PAGE_SIZE);
+    __kernel_vaddr_offset = __kernel_start_vaddr - __kernel_start_paddr;
+
+    . = __kernel_start_vaddr;
+    
+    .text : AT(__kernel_start_paddr) {
+        *(.text._start_rust)
         *(.text*)
     }
 
@@ -28,11 +29,24 @@ SECTIONS {
         *(.data*)
     }
 
-    .bss (NOLOAD) : ALIGN(16) {
-        __bss_start = .;
+    . = ALIGN(16);
+    __bss_start_paddr = . - __kernel_vaddr_offset;
+
+    .bss (NOLOAD) : {
         *(.bss*);
-        __bss_end = .;
+        . = ALIGN(16);
+        __bss_end_paddr = . - __kernel_vaddr_offset;
     }
 
-    __kernel_end = .;
+     __kernel_end_vaddr = .;
+
+     /* guard page */
+     . = ALIGN(PAGE_SIZE);
+     . += PAGE_SIZE;
+
+    . = ALIGN(PAGE_SIZE);
+    .stack (NOLOAD) : {
+        . += PAGE_SIZE;
+    }
+    __stack_end_paddr = . - __kernel_vaddr_offset;
 }
