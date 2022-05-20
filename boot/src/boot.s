@@ -1,4 +1,4 @@
-.section .text.boot
+.section .text
 
 .global _start
 
@@ -6,6 +6,13 @@
 .macro ADR_REL register, symbol
     adrp \register, \symbol
     add \register, \register, #:lo12:\symbol
+.endm
+
+.macro ADR_ABS register, symbol
+    movz \register, #:abs_g3:\symbol
+    movk \register, #:abs_g2_nc:\symbol
+    movk \register, #:abs_g1_nc:\symbol
+    movk \register, #:abs_g0_nc:\symbol
 .endm
 
 _start:
@@ -26,8 +33,14 @@ _start:
 .L_setup_stack:
     ADR_REL x0, __stack_end_paddr
     mov	sp, x0
+
     ADR_REL x0, __kernel_start_paddr
-    br x0
+    ADR_REL x1, __kernel_end_paddr
+    sub x1, x1, x0
+    ADR_REL x2, __stack_end_paddr
+    ADR_REL x3, __aux_start_paddr
+    ADR_ABS x4, __vaddr_offset
+    b _start_rust
 
 .L_parking_loop:
     wfe

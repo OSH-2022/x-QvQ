@@ -9,7 +9,7 @@ mod print;
 mod trap;
 
 #[no_mangle]
-fn _start_rust() {
+fn _start_kernel() {
     bsp::driver_init();
     print!("== Kernel Init ==\n").unwrap();
     trap::init();
