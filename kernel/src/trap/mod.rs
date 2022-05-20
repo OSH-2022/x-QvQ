@@ -79,9 +79,7 @@ pub fn handle_sync_exception(tf: &mut TrapFrame) {
     }
 }
 
-// #[no_mangle]
-// fn handle_irq_exception(_tf: &mut TrapFrame) {
-//     // if crate::gicv2::handle_irq() == IrqHandlerResult::Reschedule {
-//     //     CurrentTask::get().yield_now();
-//     // }
-// }
+#[no_mangle]
+pub fn handle_irq_exception(){
+    print!("interrupt request\n").unwrap();
+}
