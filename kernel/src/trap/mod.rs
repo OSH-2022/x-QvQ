@@ -2,11 +2,11 @@ mod context;
 pub use context::TrapFrame;
 
 use core::arch::global_asm;
-
-use cortex_a::registers::{ESR_EL1, FAR_EL1, VBAR_EL1};
+use crate::print;
+use crate::{syscall::syscall};
+use cortex_a::registers::{ESR_EL1, VBAR_EL1};
 use tock_registers::interfaces::{Readable, Writeable};
 
-// use crate::{syscall::syscall, task::CurrentTask};
 
 global_asm!(include_str!("trap.S"));
 
@@ -14,7 +14,7 @@ pub fn init() {
     extern "C" {
         fn exception_vector_base();
     }
-    VBAR_EL1.set(exception_vector_base as usize as _);
+    VBAR_EL1.set(exception_vector_base as usize as _);//set entry address
 }
 
 #[repr(u8)]
@@ -37,11 +37,6 @@ enum TrapSource {
     LowerAArch32 = 3,
 }
 
-#[derive(Debug, Eq, PartialEq)]
-pub enum IrqHandlerResult {
-    Reschedule,
-    NoReschedule,
-}
 
 #[no_mangle]
 fn invalid_exception(tf: &mut TrapFrame, kind: TrapKind, source: TrapSource) {
@@ -52,56 +47,41 @@ fn invalid_exception(tf: &mut TrapFrame, kind: TrapKind, source: TrapSource) {
 }
 
 #[no_mangle]
-fn handle_sync_exception(tf: &mut TrapFrame) {
-    // let esr = ESR_EL1.extract();
-    // match esr.read_as_enum(ESR_EL1::EC) {
-    //     Some(ESR_EL1::EC::Value::Unknown) => {
-    //         println!(
-    //             "[kernel] Unknown exception @ {:#x}, kernel killed it.",
-    //             tf.elr
-    //         );
-    //         CurrentTask::get().exit(-1);
-    //     }
-    //     Some(ESR_EL1::EC::Value::SVC64) => {
-    //         tf.r[0] = syscall(tf.r[8] as _, [tf.r[0] as _, tf.r[1] as _, tf.r[2] as _], tf) as u64
-    //     }
-    //     Some(ESR_EL1::EC::Value::DataAbortLowerEL)
-    //     | Some(ESR_EL1::EC::Value::DataAbortCurrentEL) => {
-    //         let iss = esr.read(ESR_EL1::ISS);
-    //         println!(
-    //             "[kernel] Data Abort @ {:#x}, FAR = {:#x}, ISS = {:#x}, kernel killed it.",
-    //             tf.elr,
-    //             FAR_EL1.get(),
-    //             iss
-    //         );
-    //         CurrentTask::get().exit(-1);
-    //     }
-    //     Some(ESR_EL1::EC::Value::InstrAbortLowerEL)
-    //     | Some(ESR_EL1::EC::Value::InstrAbortCurrentEL) => {
-    //         let iss = esr.read(ESR_EL1::ISS);
-    //         println!(
-    //             "[kernel] Instruction Abort @ {:#x}, FAR = {:#x}, ISS = {:#x}, kernel killed it.",
-    //             tf.elr,
-    //             FAR_EL1.get(),
-    //             iss
-    //         );
-    //         CurrentTask::get().exit(-1);
-    //     }
-    //     _ => {
-    //         panic!(
-    //             "Unsupported synchronous exception @ {:#x}: ESR = {:#x} (EC {:#08b}, ISS {:#x})",
-    //             tf.elr,
-    //             esr.get(),
-    //             esr.read(ESR_EL1::EC),
-    //             esr.read(ESR_EL1::ISS),
-    //         );
-    //     }
-    // }
+pub fn handle_sync_exception(tf: &mut TrapFrame) {
+    let esr = ESR_EL1.extract();
+    match esr.read_as_enum(ESR_EL1::EC) {
+        // ESR_EL1: register to store the reason of exception
+        Some(ESR_EL1::EC::Value::Unknown) => {
+            print!("Unknown exception error\n").unwrap();
+
+        }
+        Some(ESR_EL1::EC::Value::SVC64) => {
+            print!("execute a system call\n").unwrap();
+            tf.r[0] = syscall(tf.r[8] as _, [tf.r[0] as _, tf.r[1] as _, tf.r[2] as _]) as u64
+        }
+        Some(ESR_EL1::EC::Value::DataAbortLowerEL)
+        | Some(ESR_EL1::EC::Value::DataAbortCurrentEL) => {
+            print!("Data abort error\n").unwrap();
+        }
+        Some(ESR_EL1::EC::Value::InstrAbortLowerEL)
+        | Some(ESR_EL1::EC::Value::InstrAbortCurrentEL) => {
+            print!("Instruction abort error\n").unwrap();
+        }
+        _ => {
+            panic!(
+                "Unsupported synchronous exception @ {:#x}: ESR = {:#x} (EC {:#08b}, ISS {:#x})",
+                tf.elr,
+                esr.get(),
+                esr.read(ESR_EL1::EC),
+                esr.read(ESR_EL1::ISS),
+            );
+        }
+    }
 }
 
-#[no_mangle]
-fn handle_irq_exception(_tf: &mut TrapFrame) {
-    // if crate::gicv2::handle_irq() == IrqHandlerResult::Reschedule {
-    //     CurrentTask::get().yield_now();
-    // }
-}
+// #[no_mangle]
+// fn handle_irq_exception(_tf: &mut TrapFrame) {
+//     // if crate::gicv2::handle_irq() == IrqHandlerResult::Reschedule {
+//     //     CurrentTask::get().yield_now();
+//     // }
+// }

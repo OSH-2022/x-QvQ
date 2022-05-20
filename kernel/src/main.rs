@@ -7,6 +7,7 @@ mod bsp;
 mod panic;
 mod print;
 mod trap;
+mod syscall;
 
 #[no_mangle]
 fn _start_rust() {
