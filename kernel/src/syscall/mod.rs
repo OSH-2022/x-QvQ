@@ -3,6 +3,7 @@
 // need to add basic system call
 // e.g. exit,read,write,exec
 mod fs;
+mod process;
 use self::fs::*;
 const SYSCALL_EXIT: usize = 1;
 pub fn syscall(syscall_id: usize,args:[usize;3])->isize{

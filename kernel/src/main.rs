@@ -8,6 +8,9 @@ mod panic;
 mod print;
 mod trap;
 mod syscall;
+mod timer;
+mod config;
+mod gicv2;
 
 #[no_mangle]
 fn _start_kernel() {
@@ -15,5 +18,7 @@ fn _start_kernel() {
     print!("== Kernel Init ==\n").unwrap();
     trap::init();
     print!("==trap available==\n").unwrap();
+    timer::init();
+    print!("==timer available==\n").unwrap();
     loop {}
 }
