@@ -56,4 +56,11 @@ SECTIONS {
         __aux_start_paddr = . - __vaddr_offset;
         . += PAGE_SIZE;
     }
+    
+    . = ALIGN(PAGE_SIZE);
+    .heap (NOLOAD) : {
+        __heap_start_paddr = . - __vaddr_offset;
+        . += PAGE_SIZE * 10;
+    }
+    __heap_end_paddr = . - __vaddr_offset;
 }

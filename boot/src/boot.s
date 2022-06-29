@@ -39,7 +39,10 @@ _start:
     sub x1, x1, x0
     ADR_REL x2, __stack_end_paddr
     ADR_REL x3, __aux_start_paddr
-    ADR_ABS x4, __vaddr_offset
+    ADR_REL x4, __heap_start_paddr
+    ADR_REL x5, __heap_end_paddr
+    sub x5, x5, x4
+    ADR_ABS x6, __vaddr_offset
     b _start_rust
 
 .L_parking_loop:

@@ -1,20 +1,32 @@
 #![no_std]
 #![no_main]
 #![feature(panic_info_message)]
+#![feature(default_alloc_error_handler)]
 
 mod arch;
 mod bsp;
-mod panic;
-mod print;
-mod trap;
-mod syscall;
-mod timer;
 mod config;
 mod gicv2;
+mod heap;
+mod panic;
+mod print;
+mod syscall;
+mod timer;
+mod trap;
+
+extern crate alloc;
+
+use bsp::Driver;
+use core::ptr::NonNull;
+use palloc::GlobalPalloc;
 
 #[no_mangle]
-fn _start_kernel() {
-    bsp::driver_init();
+extern "C" fn _start_kernel(aux_va: usize, heap_va: usize, heap_size: usize) {
+    bsp::MINI_UART.init(aux_va);
+    let heap_ptr = NonNull::new(heap_va as *mut u8).expect("invalid heap vaddr");
+    unsafe {
+        heap::ALLOCATOR.init(heap_ptr, heap_size);
+    }
     print!("== Kernel Init ==\n").unwrap();
     trap::init();
     print!("==trap available==\n").unwrap();

@@ -103,6 +103,8 @@ unsafe extern "C" fn _start_rust(
     kernel_size: u64,
     stack_pa: u64,
     aux_pa: u64,
+    heap_pa: u64,
+    heap_size: u64,
     va_offset: u64,
 ) {
     BOOT_PT.map_kernel(kernel_pa + va_offset, kernel_pa, kernel_size);
@@ -112,8 +114,23 @@ unsafe extern "C" fn _start_rust(
         Normal,
     );
     BOOT_PT.map_page(aux_pa + va_offset, AUX_BASE, Device);
+    let mut pa = heap_pa;
+    while pa < heap_pa + heap_size {
+        BOOT_PT.map_page(pa + va_offset, pa, Normal);
+        pa += BootPageTable::PAGE_SIZE;
+    }
     enable_mmu_and_caching(&BOOT_PT);
     prepare_el2_to_el1_transition(stack_pa + va_offset, kernel_pa + va_offset);
     enable_fp();
+    let aux_va = aux_pa + va_offset;
+    let heap_va = heap_pa + va_offset;
+    asm! {
+        "mov x0, {aux_va}",
+        "mov x1, {heap_va}",
+        "mov x2, {heap_size}",
+        aux_va = in(reg) aux_va,
+        heap_va = in(reg) heap_va,
+        heap_size = in(reg) heap_size,
+    }
     eret();
 }

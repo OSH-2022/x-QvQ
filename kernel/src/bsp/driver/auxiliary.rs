@@ -1,6 +1,6 @@
-use super::{map, Driver, RegisterWrapper};
+use super::{Driver, RegisterWrapper};
 use ::spin::Mutex;
-use core::fmt::{Result, Write};
+use core::fmt::{Arguments, Result, Write};
 use tock_registers::{
     interfaces::{ReadWriteable, Readable},
     register_bitfields, register_structs,
@@ -90,13 +90,14 @@ pub struct MiniUartInner {
 }
 
 impl MiniUartInner {
-    const fn new(aux_reg_start: usize) -> Self {
+    const fn empty() -> Self {
         Self {
-            aux_reg: RegisterWrapper::new(aux_reg_start),
+            aux_reg: RegisterWrapper::new(0),
         }
     }
 
-    fn init(&self) {
+    fn init(&mut self, va: usize) {
+        self.aux_reg.start = va;
         self.aux_reg.enables.modify(ENABLES::MU.val(1));
         self.aux_reg.mu_cntl.modify(MU_CNTL::TX_EN.val(0));
 
@@ -119,12 +120,6 @@ impl MiniUartInner {
     }
 }
 
-impl Driver for MiniUartInner {
-    fn init(&self) {
-        MiniUartInner::init(self);
-    }
-}
-
 impl Write for MiniUartInner {
     fn write_str(&mut self, s: &str) -> Result {
         for &c in s.as_bytes() {
@@ -134,5 +129,28 @@ impl Write for MiniUartInner {
     }
 }
 
-pub static MINI_UART: Mutex<MiniUartInner> =
-    Mutex::new(MiniUartInner::new(map::mmio::auxiliary::BASE));
+pub struct MiniUart {
+    inner: Mutex<MiniUartInner>,
+}
+
+impl MiniUart {
+    const fn empty() -> Self {
+        Self {
+            inner: Mutex::new(MiniUartInner::empty()),
+        }
+    }
+
+    pub fn lock_and_write(&self, args: Arguments) -> Result {
+        let mut mini_uart = self.inner.lock();
+        mini_uart.write_fmt(args)
+    }
+}
+
+impl Driver for MiniUart {
+    fn init(&self, va: usize) {
+        let mut mini_uart = self.inner.lock();
+        mini_uart.init(va);
+    }
+}
+
+pub static MINI_UART: MiniUart = MiniUart::empty();
