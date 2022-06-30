@@ -7,6 +7,7 @@ use tock_registers::{
 // assume that kernel is smaller than 2M, aligned to 4K
 pub static mut BOOT_PT: BootPageTable = BootPageTable::new();
 
+#[derive(Copy, Clone)]
 pub enum MemoryType {
     Device,
     Normal,
@@ -15,7 +16,6 @@ pub enum MemoryType {
 #[repr(C)]
 #[repr(align(4096))]
 pub struct BootPageTable {
-    lvl1: [u64; 512],
     lvl2: [u64; 512],
     lvl3: [u64; 512],
 }
@@ -25,25 +25,30 @@ impl BootPageTable {
 
     const fn new() -> Self {
         BootPageTable {
-            lvl1: [0; 512],
             lvl2: [0; 512],
             lvl3: [0; 512],
         }
     }
 
-    pub unsafe fn get_lvl1_addr(&self) -> u64 {
-        &self.lvl1 as *const _ as u64
+    pub unsafe fn get_base_addr(&self) -> u64 {
+        &self.lvl2 as *const _ as u64
     }
 
-    pub unsafe fn map_kernel(&mut self, kernel_va: u64, kernel_pa: u64, kernel_size: u64) {
-        self.lvl1[Self::get_lvl1_offset(kernel_va)] =
-            Self::table_descriptor(&self.lvl2 as *const _ as u64);
+    pub fn init(&mut self, kernel_va: u64) {
         self.lvl2[Self::get_lvl2_offset(kernel_va)] =
             Self::table_descriptor(&self.lvl3 as *const _ as u64);
+    }
 
-        for off in (0..kernel_size).step_by(Self::PAGE_SIZE as usize) {
-            self.lvl3[Self::get_lvl3_offset(kernel_va + off)] =
-                Self::page_descriptor(kernel_pa + off, MemoryType::Normal);
+    pub unsafe fn map_pages(
+        &mut self,
+        va: u64,
+        pa: u64,
+        size: u64,
+        mem_type: MemoryType,
+    ) {
+        for off in (0..size).step_by(Self::PAGE_SIZE as usize) {
+            self.lvl3[Self::get_lvl3_offset(va + off)] =
+                Self::page_descriptor(pa + off, mem_type);
         }
     }
 
@@ -78,10 +83,6 @@ impl BootPageTable {
             MemoryType::Normal => val.modify(STAGE1_PAGE_DESCRIPTOR::AttrIndx.val(1)),
         }
         val.get()
-    }
-
-    fn get_lvl1_offset(va: u64) -> usize {
-        ((va >> (12 + 9 * 2)) & 0x1ff) as usize
     }
 
     fn get_lvl2_offset(va: u64) -> usize {

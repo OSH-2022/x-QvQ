@@ -8,7 +8,7 @@ use cortex_a::{
     asm::{barrier, eret},
     registers::*,
 };
-use mmu::{BootPageTable, MemoryType::*, BOOT_PT};
+use mmu::{BootPageTable, MemoryType, BOOT_PT};
 use tock_registers::interfaces::Writeable;
 
 core::arch::global_asm! {include_str!("boot.s")}
@@ -50,7 +50,8 @@ fn set_up_mair() {
 }
 
 fn configure_translation_control() {
-    let t1sz = 64 - 39;
+    /* 2-level page table, mapping 1GB in total */
+    let t1sz = 64 - 30;
 
     TCR_EL1.write(
         TCR_EL1::TBI1::Used
@@ -66,12 +67,12 @@ fn configure_translation_control() {
     );
 }
 
-unsafe fn enable_mmu_and_caching(boot_pt: &BootPageTable) {
+unsafe fn enable_mmu_and_caching(base: u64) {
     // Prepare the memory attribute indirection register.
     set_up_mair();
 
     // Set the "Translation Table Base Register".
-    TTBR1_EL1.set_baddr(boot_pt.get_lvl1_addr());
+    TTBR1_EL1.set_baddr(base);
 
     configure_translation_control();
 
@@ -102,35 +103,46 @@ unsafe extern "C" fn _start_rust(
     kernel_pa: u64,
     kernel_size: u64,
     stack_pa: u64,
-    aux_pa: u64,
-    heap_pa: u64,
-    heap_size: u64,
-    va_offset: u64,
+    off: u64,
+
+    aux_va: u64,
+    pt_va: u64,
+    pa_start: u64,
 ) {
-    BOOT_PT.map_kernel(kernel_pa + va_offset, kernel_pa, kernel_size);
-    BOOT_PT.map_page(
-        stack_pa + va_offset - BootPageTable::PAGE_SIZE,
-        stack_pa - BootPageTable::PAGE_SIZE,
-        Normal,
+    BOOT_PT.init(kernel_pa + off);
+
+    /* text bss data */
+    BOOT_PT.map_pages(
+        kernel_pa + off,
+        kernel_pa,
+        kernel_size,
+        MemoryType::Normal,
     );
-    BOOT_PT.map_page(aux_pa + va_offset, AUX_BASE, Device);
-    let mut pa = heap_pa;
-    while pa < heap_pa + heap_size {
-        BOOT_PT.map_page(pa + va_offset, pa, Normal);
-        pa += BootPageTable::PAGE_SIZE;
-    }
-    enable_mmu_and_caching(&BOOT_PT);
-    prepare_el2_to_el1_transition(stack_pa + va_offset, kernel_pa + va_offset);
+
+    /* stack */
+    let stack_pa_start = stack_pa - BootPageTable::PAGE_SIZE;
+    BOOT_PT.map_page(stack_pa_start + off, stack_pa_start, MemoryType::Normal);
+
+    /* mmio */
+    BOOT_PT.map_page(aux_va, AUX_BASE, MemoryType::Device);
+
+    /* page table */
+    BOOT_PT.map_page(
+        pt_va,
+        &BOOT_PT as *const _ as u64 + BootPageTable::PAGE_SIZE,
+        MemoryType::Normal,
+    );
+
+    enable_mmu_and_caching(BOOT_PT.get_base_addr());
+    prepare_el2_to_el1_transition(stack_pa + off, kernel_pa + off);
     enable_fp();
-    let aux_va = aux_pa + va_offset;
-    let heap_va = heap_pa + va_offset;
     asm! {
         "mov x0, {aux_va}",
-        "mov x1, {heap_va}",
-        "mov x2, {heap_size}",
+        "mov x1, {pt_va}",
+        "mov x2, {pa_start}",
         aux_va = in(reg) aux_va,
-        heap_va = in(reg) heap_va,
-        heap_size = in(reg) heap_size,
+        pt_va = in(reg) pt_va,
+        pa_start = in(reg) pa_start
     }
     eret();
 }

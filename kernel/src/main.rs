@@ -21,12 +21,16 @@ use core::ptr::NonNull;
 use palloc::GlobalPalloc;
 
 #[no_mangle]
-extern "C" fn _start_kernel(aux_va: usize, heap_va: usize, heap_size: usize) {
+extern "C" fn _start_kernel(
+    aux_va: usize,
+    pt_va: usize,
+    pa_start: usize,
+) {
     bsp::MINI_UART.init(aux_va);
-    let heap_ptr = NonNull::new(heap_va as *mut u8).expect("invalid heap vaddr");
-    unsafe {
-        heap::ALLOCATOR.init(heap_ptr, heap_size);
-    }
+    // let heap_ptr = NonNull::new(heap_va as *mut u8).expect("invalid heap vaddr");
+    // unsafe {
+    //     heap::ALLOCATOR.init(heap_ptr, heap_size);
+    // }
     print!("== Kernel Init ==\n").unwrap();
     trap::init();
     print!("==trap available==\n").unwrap();

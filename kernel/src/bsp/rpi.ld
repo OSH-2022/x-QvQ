@@ -3,7 +3,7 @@ ENTRY(_start)
 PAGE_SIZE = 4K;
 
 __boot_start_paddr = 0x80000;
-__kernel_start_vaddr = 0xffffff8000000000;
+__kernel_start_vaddr = 0xffffffffc0000000;
 
 SECTIONS {
     . = __boot_start_paddr;
@@ -52,15 +52,16 @@ SECTIONS {
     __stack_end_paddr = . - __vaddr_offset;
 
     . = ALIGN(PAGE_SIZE);
+    __paddr_start = . - __vaddr_offset;
+
     .mmio (NOLOAD) : {
-        __aux_start_paddr = . - __vaddr_offset;
+        __aux_start_vaddr = .;
         . += PAGE_SIZE;
     }
-    
+
     . = ALIGN(PAGE_SIZE);
-    .heap (NOLOAD) : {
-        __heap_start_paddr = . - __vaddr_offset;
-        . += PAGE_SIZE * 10;
+    .pt (NOLOAD) : {
+        __pt_start_vaddr = .;
+        . += PAGE_SIZE;
     }
-    __heap_end_paddr = . - __vaddr_offset;
 }
