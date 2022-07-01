@@ -7,9 +7,21 @@ __kernel_start_vaddr = 0xffffffffc0000000;
 
 SECTIONS {
     . = __boot_start_paddr;
-    .boot : AT(__boot_start_paddr) {
-        *boot*(.text._start)
-        *boot*(.text* .rodata* .data* .bss*)
+    .text.boot : AT(__boot_start_paddr){
+        KEEP(*boot*(.text.boot*))
+        *boot*(.text*)
+    }
+
+    .rodata.boot : AT(.) {
+        *boot*(.rodata*)
+    }
+
+    .data.boot : AT(.) {
+        *boot*(.data*)
+    }
+
+    .bss.boot : AT(.) {
+        *boot*(.bss*)
     }
 
     __kernel_start_paddr = ALIGN(PAGE_SIZE);
@@ -34,7 +46,7 @@ SECTIONS {
     __bss_start_paddr = . - __vaddr_offset;
 
     .bss (NOLOAD) : {
-        *(.bss*);
+        *(.bss*)
         . = ALIGN(16);
         __bss_end_paddr = . - __vaddr_offset;
     }
@@ -45,23 +57,21 @@ SECTIONS {
     . = ALIGN(PAGE_SIZE);
     . += PAGE_SIZE;
 
-    . = ALIGN(PAGE_SIZE);
     .stack (NOLOAD) : {
         . += PAGE_SIZE;
     }
     __stack_end_paddr = . - __vaddr_offset;
 
-    . = ALIGN(PAGE_SIZE);
+    .pt (NOLOAD) : {
+        __pt_start_paddr = . - __vaddr_offset;
+        . += PAGE_SIZE * (1 + 512);
+    }
+
     __paddr_start = . - __vaddr_offset;
 
     .mmio (NOLOAD) : {
         __aux_start_vaddr = .;
         . += PAGE_SIZE;
     }
-
-    . = ALIGN(PAGE_SIZE);
-    .pt (NOLOAD) : {
-        __pt_start_vaddr = .;
-        . += PAGE_SIZE;
-    }
+    __vaddr_start = .;
 }

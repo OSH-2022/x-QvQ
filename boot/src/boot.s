@@ -1,7 +1,3 @@
-.section .text
-
-.global _start
-
 // https://sourceware.org/binutils/docs-2.36/as/AArch64_002dRelocations.html
 .macro ADR_REL register, symbol
     adrp \register, \symbol
@@ -14,6 +10,8 @@
     movk \register, #:abs_g1_nc:\symbol
     movk \register, #:abs_g0_nc:\symbol
 .endm
+
+.section .text.boot
 
 _start:
     mrs	x1, mpidr_el1
@@ -40,9 +38,10 @@ _start:
     ADR_REL x2, __stack_end_paddr
     ADR_ABS x3, __vaddr_offset
 
-    ADR_ABS x4, __aux_start_vaddr
-    ADR_ABS x5, __pt_start_vaddr
-    ADR_ABS x5, __paddr_start
+    ADR_ABS x4, __pt_start_paddr
+    ADR_ABS x5, __aux_start_vaddr
+    ADR_ABS x6, __vaddr_start
+    ADR_ABS x7, __paddr_start
     
     b _start_rust
 

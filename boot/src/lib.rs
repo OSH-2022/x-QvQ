@@ -8,7 +8,7 @@ use cortex_a::{
     asm::{barrier, eret},
     registers::*,
 };
-use mmu::{BootPageTable, MemoryType, BOOT_PT};
+use mmu::{BootPageTable, MemoryType};
 use tock_registers::interfaces::Writeable;
 
 core::arch::global_asm! {include_str!("boot.s")}
@@ -104,45 +104,46 @@ unsafe extern "C" fn _start_rust(
     kernel_size: u64,
     stack_pa: u64,
     off: u64,
+    pt_pa: u64,
 
     aux_va: u64,
-    pt_va: u64,
+    va_start: u64,
     pa_start: u64,
 ) {
-    BOOT_PT.init(kernel_pa + off);
+    let boot_pt = &mut *(pt_pa as *mut BootPageTable);
+    boot_pt.init();
 
     /* text bss data */
-    BOOT_PT.map_pages(
-        kernel_pa + off,
-        kernel_pa,
-        kernel_size,
-        MemoryType::Normal,
-    );
+    boot_pt.map_pages(kernel_pa + off, kernel_pa, kernel_size, MemoryType::Normal);
 
     /* stack */
     let stack_pa_start = stack_pa - BootPageTable::PAGE_SIZE;
-    BOOT_PT.map_page(stack_pa_start + off, stack_pa_start, MemoryType::Normal);
+    boot_pt.map_page(stack_pa_start + off, stack_pa_start, MemoryType::Normal);
 
     /* mmio */
-    BOOT_PT.map_page(aux_va, AUX_BASE, MemoryType::Device);
+    boot_pt.map_page(aux_va, AUX_BASE, MemoryType::Device);
 
-    /* page table */
-    BOOT_PT.map_page(
-        pt_va,
-        &BOOT_PT as *const _ as u64 + BootPageTable::PAGE_SIZE,
+    /* pte */
+    let pte_pa = pt_pa + BootPageTable::PAGE_SIZE;
+    boot_pt.map_pages(
+        pte_pa + off,
+        pte_pa,
+        BootPageTable::PAGE_SIZE * 512,
         MemoryType::Normal,
     );
 
-    enable_mmu_and_caching(BOOT_PT.get_base_addr());
+    enable_mmu_and_caching(boot_pt.get_base_addr());
     prepare_el2_to_el1_transition(stack_pa + off, kernel_pa + off);
     enable_fp();
     asm! {
         "mov x0, {aux_va}",
-        "mov x1, {pt_va}",
-        "mov x2, {pa_start}",
+        "mov x1, {pte_va}",
+        "mov x2, {va_start}",
+        "mov x3, {pa_start}",
         aux_va = in(reg) aux_va,
-        pt_va = in(reg) pt_va,
-        pa_start = in(reg) pa_start
+        pte_va = in(reg) pte_pa + off,
+        va_start = in(reg) va_start,
+        pa_start = in(reg) pa_start,
     }
     eret();
 }
