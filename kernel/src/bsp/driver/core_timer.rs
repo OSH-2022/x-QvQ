@@ -1,7 +1,7 @@
 use crate::mmu::{Addr, VirtAddr};
-use cortex_a::registers::{CNTP_CTL_EL0, CNTP_TVAL_EL0};
+use cortex_a::registers::{CNTP_CTL_EL0, CNTP_TVAL_EL0, CNTFRQ_EL0};
 use spin::Mutex;
-use tock_registers::interfaces::{Writeable};
+use tock_registers::interfaces::{Writeable, Readable};
 use tock_registers::registers::ReadWrite;
 use tock_registers::{register_bitfields, register_structs};
 
@@ -14,6 +14,7 @@ pub struct CoreTimer {
 
 impl CoreTimer {
     const CRYSTAL_FREQ: usize = 19.2e6 as usize;
+    const TIMER_FREQ: usize = 1e6 as usize;
 
     const fn empty() -> Self {
         Self { start: None }
@@ -25,23 +26,23 @@ impl CoreTimer {
             None => {
                 self.start = Some(start);
                 CNTP_CTL_EL0.write(CNTP_CTL_EL0::ENABLE::SET);
-                self.set_interval(10);
+                Self::set_interval(10);
 
                 let reg: RegisterWrapper<CoreTimerRegs> = RegisterWrapper::new(start.to_usize());
                 reg.ctrl.write(CTRL::INC::Inc1 + CTRL::CLK::Crystal);
                 reg.core0_int_ctrl.write(INT_CTRL::CNTPNSIRQ.val(1));
+                reg.prescaler.set(Self::prescaler_cal(Self::CRYSTAL_FREQ, Self::TIMER_FREQ));
             }
         }
     }
 
-    pub fn set_interval(&self, ms: usize) {
-        let start = self.start.expect("un-init core timer");
-        CNTP_TVAL_EL0.set(Self::prescaler_cal(Self::CRYSTAL_FREQ, 1000 / ms) as u64);
+    pub fn set_interval(ms: usize) {
+        CNTP_TVAL_EL0.set((CNTFRQ_EL0.get() * ms as u64) / 1000);
     }
 
-    const fn prescaler_cal(freq_in: usize, freq_out: usize) -> usize {
+    const fn prescaler_cal(freq_in: usize, freq_out: usize) -> u32 {
         // freq_out = (1 << 31) / prescaler * freq_in
-        (freq_in * (1 << 31)) / freq_out
+        ((freq_in * (1 << 31)) / freq_out) as u32
     }
 }
 

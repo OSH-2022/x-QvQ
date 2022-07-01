@@ -2,7 +2,7 @@ mod auxiliary;
 mod core_timer;
 
 pub use auxiliary::MINI_UART;
-pub use core_timer::CORE_TIMER;
+pub use core_timer::{CORE_TIMER, CoreTimer};
 
 use core::{marker::PhantomData, ops};
 

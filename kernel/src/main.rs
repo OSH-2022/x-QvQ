@@ -6,33 +6,23 @@
 
 mod arch;
 mod bsp;
-mod config;
-mod gicv2;
 mod heap;
+mod mmu;
 mod panic;
 mod print;
-mod syscall;
-mod timer;
-mod trap;
-mod mmu;
 
 extern crate alloc;
 
-use bsp::Driver;
-use mmu::{Addr, MemoryType, VirtAddr, PhyAddr};
-use core::ptr::NonNull;
-use palloc::GlobalPalloc;
 use alloc::string::String;
+use bsp::Driver;
+use core::ptr::NonNull;
+use mmu::{Addr, MemoryType, PhyAddr, VirtAddr};
+use palloc::GlobalPalloc;
 
 const HEAP_SIZE: usize = 10;
 
 #[no_mangle]
-extern "C" fn _start_kernel(
-    aux_va: usize,
-    pte_va: usize,
-    va_start: usize,
-    pa_start: usize,
-) {
+extern "C" fn _start_kernel(aux_va: usize, pte_va: usize, va_start: usize, pa_start: usize) {
     bsp::MINI_UART.init(aux_va);
 
     print!("== kernel init ==\n").unwrap();
@@ -45,13 +35,20 @@ extern "C" fn _start_kernel(
         phy.init(mmu::PhyAddr::from_usize(pa_start));
 
         let mut virt = arch::VIRT_PAGE_MANAGE.lock();
-        virt.init(mmu::VirtAddr::from_usize(pte_va), mmu::VirtAddr::from_usize(va_start));
+        virt.init(
+            mmu::VirtAddr::from_usize(pte_va),
+            mmu::VirtAddr::from_usize(va_start),
+        );
 
         print!("pa_start: {:#x}\nva_start: {:#x}\n", pa_start, va_start).unwrap();
 
         /* heap */
         for i in 0..HEAP_SIZE {
-            virt.map(va.add_off(i * arch::PAGE_SIZE), phy.alloc(), MemoryType::Normal)
+            virt.map(
+                va.add_off(i * arch::PAGE_SIZE),
+                phy.alloc(),
+                MemoryType::Normal,
+            )
         }
         print!("heap_size: {}\n", HEAP_SIZE).unwrap();
 
@@ -64,16 +61,25 @@ extern "C" fn _start_kernel(
         va = va.add_off(arch::PAGE_SIZE * HEAP_SIZE);
 
         /* core timer */
-        virt.map(va, PhyAddr::from_usize(bsp::memory_map::perip::core_timer::BASE), MemoryType::Device);
+        virt.map(
+            va,
+            PhyAddr::from_usize(bsp::memory_map::perip::core_timer::BASE),
+            MemoryType::Device,
+        );
         {
             let mut core_timer = bsp::CORE_TIMER.lock();
             core_timer.init(va);
         }
+        bsp::CoreTimer::set_interval(10);
         print!("core_timer init at {:#x}\n", va.to_usize()).unwrap();
 
         va = va.add_off(arch::PAGE_SIZE);
     }
-    trap::init();
-    print!("==trap available==\n").unwrap();
+
+    /* exception */
+    arch::Exception::mask_irq();
+    arch::Exception::setup_vbar();
+    print!("exception init\n").unwrap();
+
     loop {}
 }
