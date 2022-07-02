@@ -18,10 +18,10 @@ A simple kernel for raspberry pi 3b+ written in Rust,  with the purpose of explo
 
 ### Kernel
 
-- [ ] Virtual memory
-- [ ] Interrupt
-- [ ] Heap
-- [ ] Thread
+- [x] Virtual memory
+- [x] Interrupt
+- [x] Heap
+- [x] Thread
 - [ ] Syscall
 - [ ] Domain
 - [ ] Shared heap & RRef
