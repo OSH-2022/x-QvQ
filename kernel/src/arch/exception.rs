@@ -1,7 +1,10 @@
 mod context;
 
 use core::arch::asm;
+use core::ops::{Deref, DerefMut};
 
+use crate::mmu::{Addr, VirtAddr};
+use crate::thread::Scheduler;
 pub use context::Context;
 use cortex_a::asm::barrier;
 use cortex_a::registers::VBAR_EL1;
@@ -36,11 +39,11 @@ impl Exception {
         }
     }
 
-    pub fn set_sp_and_exit(sp: usize) {
+    pub fn set_sp_and_exit(sp: VirtAddr) {
         unsafe {
             asm!(
                 "mov sp, {sp}",
-                sp = in(reg) sp,
+                sp = in(reg) sp.to_usize(),
             );
             exit_exception();
         }
@@ -58,7 +61,18 @@ extern "C" fn handle_exception_serror(context: &mut Context) {
 }
 
 #[no_mangle]
-extern "C" fn handle_interrupt(context: &mut Context) {
+extern "C" fn handle_interrupt(context: &'static Context) {
+    // irq masked automatically
     crate::bsp::CoreTimer::set_interval(10);
-    Exception::set_sp_and_exit(context as *const _ as _);
+    if let Some(mut sche) = crate::thread::SCHEDULER.try_lock() {
+        let sche_ptr = sche.deref_mut() as *mut Scheduler;
+        /* have to drop the lock here in case of dead lock, should be safe for single core cpu (hope so) */
+        drop(sche);
+        unsafe {
+            (*sche_ptr).schedule(context);
+        }
+    }
+    unsafe {
+        Exception::set_sp_and_exit(context.to_sp());
+    }
 }

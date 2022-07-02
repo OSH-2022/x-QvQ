@@ -7,6 +7,7 @@ use spin::Mutex;
 pub const PAGE_SIZE: usize = 0x1000;
 
 pub static PHY_PAGE_ALLOC: Mutex<PhyPageAlloc> = Mutex::new(PhyPageAlloc::empty());
+pub static VIRT_PAGE_ALLOC: Mutex<VirtPageAlloc> = Mutex::new(VirtPageAlloc::empty());
 pub static VIRT_PAGE_MANAGE: Mutex<VirtPageManage> = Mutex::new(VirtPageManage::empty());
 
 /* alloc but never free (for simplicity) */
@@ -30,6 +31,26 @@ impl PhyPageAlloc {
     }
 }
 
+pub struct VirtPageAlloc {
+    current: Option<VirtAddr>,
+}
+
+impl VirtPageAlloc {
+    const fn empty() -> Self {
+        Self { current: None }
+    }
+
+    pub fn init(&mut self, va_start: VirtAddr) {
+        self.current = Some(va_start);
+    }
+
+    pub fn alloc(&mut self) -> VirtAddr {
+        let old = self.current.expect("virt page alloc uninitialized");
+        self.current = Some(old.add_off(PAGE_SIZE));
+        old
+    }
+}
+
 pub struct VirtPageManage {
     pt: Option<&'static mut PageTable>,
     va_start: Option<VirtAddr>,
@@ -48,6 +69,14 @@ impl VirtPageManage {
             self.pt = Some(&mut *(pte_va.to_usize() as *mut PageTable));
         }
         self.va_start = Some(va_start);
+    }
+
+    pub fn new_page(&mut self, mem_type: MemoryType) -> VirtAddr {
+        let mut p = PHY_PAGE_ALLOC.lock();
+        let mut v = VIRT_PAGE_ALLOC.lock();
+        let va = v.alloc();
+        self.map(va, p.alloc(), mem_type);
+        va
     }
 
     pub fn map(&mut self, va: VirtAddr, pa: PhyAddr, mem_type: MemoryType) {
