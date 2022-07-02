@@ -15,7 +15,6 @@ mod thread;
 extern crate alloc;
 
 use alloc::string::String;
-use bsp::Driver;
 use core::ptr::NonNull;
 use mmu::{Addr, MemoryType, PhyAddr, VirtAddr};
 use palloc::GlobalPalloc;
@@ -24,7 +23,10 @@ const HEAP_SIZE: usize = 10;
 
 #[no_mangle]
 extern "C" fn _start_kernel(aux_va: usize, pte_va: usize, va_start: usize, pa_start: usize) {
-    bsp::MINI_UART.init(aux_va);
+    {
+        let mut uart = bsp::MINI_UART.lock();
+        uart.init(aux_va);
+    }
 
     print!("== kernel init ==\n").unwrap();
 
@@ -87,7 +89,7 @@ extern "C" fn _start_kernel(aux_va: usize, pte_va: usize, va_start: usize, pa_st
             kernel_thread as *const usize as usize,
         )));
         sche.insert(thread::Thread::new(VirtAddr::from_usize(
-            hello as *const usize as usize,
+            shell as *const usize as usize,
         )));
     }
 
@@ -102,11 +104,38 @@ fn kernel_thread() {
     loop {}
 }
 
-fn hello() {
-    print!("hello thread\n").unwrap();
+fn shell() {
+    print!("shell thread\n> ").unwrap();
+    loop {
+        let cmd = readln();
+        match cmd.as_str() {
+            "exit" => break,
+            _ => (),
+        }
+        print!("\n> ").unwrap();
+    }
+    print!("\nshell thread exit\n").unwrap();
     {
         let mut sche = thread::SCHEDULER.lock();
         sche.remove_self();
     }
     loop {}
+}
+
+fn readln() -> String {
+    let mut str = String::new();
+    loop {
+        let mut ch: Option<u8> = None;
+        {
+            let uart = bsp::MINI_UART.lock();
+            ch = uart.getc();
+        }
+        if let Some(c) = ch {
+            if c == b'\r' {
+                break str;
+            }
+            str.push(c as char);
+            print!("{}", c as char).unwrap();
+        }
+    }
 }

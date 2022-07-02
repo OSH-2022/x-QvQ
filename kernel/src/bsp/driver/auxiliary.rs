@@ -1,4 +1,4 @@
-use super::{Driver, RegisterWrapper};
+use super::RegisterWrapper;
 use ::spin::Mutex;
 use core::fmt::{Arguments, Result, Write};
 use tock_registers::{
@@ -85,18 +85,18 @@ register_bitfields! {
 const VCLK: usize = 250_000_000;
 const BAUDRATE: usize = 115200;
 
-pub struct MiniUartInner {
+pub struct MiniUart {
     aux_reg: RegisterWrapper<AuxReg>,
 }
 
-impl MiniUartInner {
+impl MiniUart {
     const fn empty() -> Self {
         Self {
             aux_reg: RegisterWrapper::new(0),
         }
     }
 
-    fn init(&mut self, va: usize) {
+    pub fn init(&mut self, va: usize) {
         self.aux_reg.start = va;
         self.aux_reg.enables.modify(ENABLES::MU.val(1));
         self.aux_reg.mu_cntl.modify(MU_CNTL::TX_EN.val(0));
@@ -110,17 +110,25 @@ impl MiniUartInner {
         self.aux_reg.mu_cntl.modify(MU_CNTL::TX_EN.val(1));
     }
 
-    fn putc(&self, ch: u8) {
+    pub fn putc(&self, ch: u8) {
         while !self.aux_reg.mu_lsr.is_set(MU_LSR::TX_EMPTY) {}
         self.aux_reg.mu_io.modify(MU_IO::DATA.val(ch as u32));
     }
 
-    fn _flush(&self) {
+    pub fn flush(&self) {
         while !self.aux_reg.mu_lsr.is_set(MU_LSR::TX_IDLE) {}
+    }
+
+    pub fn getc(&self) -> Option<u8> {
+        if self.aux_reg.mu_lsr.is_set(MU_LSR::RX_DATA_READY) {
+            Some(self.aux_reg.mu_io.read(MU_IO::DATA) as u8)
+        } else {
+            None
+        }
     }
 }
 
-impl Write for MiniUartInner {
+impl Write for MiniUart {
     fn write_str(&mut self, s: &str) -> Result {
         for &c in s.as_bytes() {
             self.putc(c);
@@ -129,28 +137,4 @@ impl Write for MiniUartInner {
     }
 }
 
-pub struct MiniUart {
-    inner: Mutex<MiniUartInner>,
-}
-
-impl MiniUart {
-    const fn empty() -> Self {
-        Self {
-            inner: Mutex::new(MiniUartInner::empty()),
-        }
-    }
-
-    pub fn lock_and_write(&self, args: Arguments) -> Result {
-        let mut mini_uart = self.inner.lock();
-        mini_uart.write_fmt(args)
-    }
-}
-
-impl Driver for MiniUart {
-    fn init(&self, va: usize) {
-        let mut mini_uart = self.inner.lock();
-        mini_uart.init(va);
-    }
-}
-
-pub static MINI_UART: MiniUart = MiniUart::empty();
+pub static MINI_UART: Mutex<MiniUart> = Mutex::new(MiniUart::empty());

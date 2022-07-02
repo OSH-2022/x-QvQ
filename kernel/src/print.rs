@@ -1,8 +1,9 @@
 use crate::bsp::MINI_UART;
-use core::fmt::{Arguments, Result};
+use core::fmt::{Arguments, Result, Write};
 
 pub fn _print(args: Arguments) -> Result {
-    MINI_UART.lock_and_write(args)
+    let mut uart = MINI_UART.lock();
+    uart.write_fmt(args)
 }
 
 #[macro_export]

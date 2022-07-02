@@ -6,10 +6,6 @@ pub use core_timer::{CORE_TIMER, CoreTimer};
 
 use core::{marker::PhantomData, ops};
 
-pub trait Driver {
-    fn init(&self, va: usize);
-}
-
 struct RegisterWrapper<T> {
     start: usize,
     phantom: PhantomData<T>,
