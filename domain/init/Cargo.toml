@@ -1,0 +1,16 @@
+[package]
+name = "init"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "init"
+test = false
+bench = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+interface = { path = "../../interface" }
+libsyscall = { path = "../../lib/libsyscall" }
+spin = "0.9"
