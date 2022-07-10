@@ -212,6 +212,9 @@ boot 是一段运行在 EL2 实地址的代码，它的基本流程为
 
 ## 参考文献
 [QvQ 调研报告](https://github.com/OSH-2022/x-QvQ/blob/main/docs/research/research.md)
+
 [QvQ 可行性报告](https://github.com/OSH-2022/x-QvQ/blob/main/docs/feasibility/feasibility.md)
+
 [i_am_feeling_lucky](https://github.com/OSH-2019/x-i-m-feeling-lucky/blob/master/docs/final_report.md#%E9%A1%B9%E7%9B%AE%E6%9E%B6%E6%9E%84)
+
 [DisGraFS](https://github.com/OSH-2021/x-DisGraFS/blob/main/docs/final_report/conclusion.md)
